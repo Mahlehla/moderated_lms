@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 
 class Assignment {
 private:
@@ -10,6 +11,7 @@ private:
     std::string description_;
     std::string deadline_;
     bool released_;
+    double maxMark_;
 
 public:
     Assignment(
@@ -18,38 +20,22 @@ public:
         std::string title,
         std::string description,
         std::string deadline,
-        bool released
+        bool released,
+        double maxMark = 100.0
     )
         : id_(id),
           courseId_(courseId),
           title_(std::move(title)),
           description_(std::move(description)),
           deadline_(std::move(deadline)),
-          released_(released)
-    {
-    }
+          released_(released),
+          maxMark_(maxMark) {}
 
-    int id() const {
-        return id_;
-    }
-
-    int courseId() const {
-        return courseId_;
-    }
-
-    const std::string& title() const {
-        return title_;
-    }
-
-    const std::string& description() const {
-        return description_;
-    }
-
-    const std::string& deadline() const {
-        return deadline_;
-    }
-
-    bool released() const {
-        return released_;
-    }
+    int id() const { return id_; }
+    int courseId() const { return courseId_; }
+    const std::string& title() const { return title_; }
+    const std::string& description() const { return description_; }
+    const std::string& deadline() const { return deadline_; }
+    bool released() const { return released_; }
+    double maxMark() const { return maxMark_; }
 };

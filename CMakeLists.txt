@@ -37,3 +37,18 @@ target_compile_options(lms PRIVATE
     -Wextra
     -Wpedantic
 )
+
+enable_testing()
+
+add_executable(lms_tests
+    tests/test_week4.cpp
+    src/data/Database.cpp
+    src/data/AssigmentRepository.cpp
+    src/services/StandardLateSubmissionStrategy.cpp
+)
+
+target_include_directories(lms_tests PRIVATE include)
+target_link_libraries(lms_tests PRIVATE SQLite3::SQLite3)
+target_compile_options(lms_tests PRIVATE -Wall -Wextra -Wpedantic)
+
+add_test(NAME Week4Tests COMMAND lms_tests)

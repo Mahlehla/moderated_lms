@@ -83,16 +83,14 @@ void Database::initialise()
 
         CREATE TABLE IF NOT EXISTS ASSIGNMENT (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-
             course_id INTEGER NOT NULL,
-
             title TEXT NOT NULL,
             description TEXT NOT NULL,
             deadline TEXT NOT NULL,
-
             released INTEGER NOT NULL DEFAULT 0
                 CHECK (released IN (0,1)),
-
+            max_mark REAL NOT NULL DEFAULT 100
+                CHECK (max_mark > 0),
             FOREIGN KEY (course_id)
                 REFERENCES COURSE(id)
         );

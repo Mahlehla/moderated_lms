@@ -1,3 +1,0 @@
-/home/tsepiso/moderated_lms/build/CMakeFiles/lms.dir
-/home/tsepiso/moderated_lms/build/CMakeFiles/edit_cache.dir
-/home/tsepiso/moderated_lms/build/CMakeFiles/rebuild_cache.dir
