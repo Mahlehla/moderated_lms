@@ -102,3 +102,29 @@ add_test(
     NAME Week5AssessmentWorkflowTests
     COMMAND lms_workflow_tests
 )
+
+# Week 6: Quality Assurance Tests
+add_executable(lms_week6_qa_tests
+    tests/test_week6_qa.cpp
+    src/data/Database.cpp
+    src/data/SubmissionRepository.cpp
+    src/services/AccessControlService.cpp
+    src/services/AssessmentWorkflowService.cpp
+)
+
+target_include_directories(lms_week6_qa_tests PRIVATE include)
+
+target_link_libraries(lms_week6_qa_tests PRIVATE
+    SQLite3::SQLite3
+)
+
+target_compile_options(lms_week6_qa_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+)
+
+add_test(
+    NAME Week6QATests
+    COMMAND lms_week6_qa_tests
+)
