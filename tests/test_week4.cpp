@@ -89,6 +89,44 @@ int main() {
             invalidMarkRejected = true;
         }
         assert(invalidMarkRejected);
+                // Maximum mark of 100 is valid.
+        const int hundredMarkId = assignments.create(
+            1,
+            "Maximum Boundary Test",
+            "Testing the upper valid boundary",
+            "2026-11-15 23:59:59",
+            100.0
+        );
+
+        const auto hundredMarkAssignment =
+            assignments.findById(hundredMarkId);
+
+        assert(hundredMarkAssignment.has_value());
+        assert(hundredMarkAssignment->maxMark() == 100.0);
+
+        // Maximum mark above 100 must be rejected.
+        bool excessiveMarkRejected = false;
+        try {
+            assignments.create(
+                1, "Excessive", "Test",
+                "2026-11-15 23:59:59", 100.01
+            );
+        } catch (const std::invalid_argument&) {
+            excessiveMarkRejected = true;
+        }
+        assert(excessiveMarkRejected);
+
+        // Negative maximum mark must be rejected.
+        bool negativeMarkRejected = false;
+        try {
+            assignments.create(
+                1, "Negative", "Test",
+                "2026-11-15 23:59:59", -10.0
+            );
+        } catch (const std::invalid_argument&) {
+            negativeMarkRejected = true;
+        }
+        assert(negativeMarkRejected);
 
         bool emptyTitleRejected = false;
         try {

@@ -19,9 +19,12 @@ int AssignmentRepository::create(
     if (deadline.empty()) {
         throw std::invalid_argument("Assignment deadline cannot be empty.");
     }
-    if (maxMark <= 0.0) {
-        throw std::invalid_argument("Maximum mark must be greater than zero.");
-    }
+    if (maxMark <= 0.0 || maxMark > 100.0) {
+    throw std::invalid_argument(
+        "Maximum mark must be greater than zero and cannot exceed 100."
+    );
+
+}
 
     const char* sql =
         "INSERT INTO ASSIGNMENT "

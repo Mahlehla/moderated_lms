@@ -6,7 +6,7 @@
 #include "data/CourseRepository.hpp"
 #include "data/EnrolmentRepository.hpp"
 #include "data/AssignmentRepository.hpp"
-
+#include "services/PasswordHasher.hpp"
 #include "services/AuthenticationService.hpp"
 
 #include <iostream>
@@ -204,13 +204,16 @@ int main()
                 SQLITE_STATIC
             );
 
-            sqlite3_bind_text(
-                statement,
-                2,
-                "student123",
-                -1,
-                SQLITE_STATIC
-            );
+            const std::string studentPasswordHash =
+    PasswordHasher::hash("student123");
+
+sqlite3_bind_text(
+    statement,
+    2,
+    studentPasswordHash.c_str(),
+    -1,
+    SQLITE_TRANSIENT
+);
 
             sqlite3_bind_text(
                 statement,
