@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/tsepiso/moderated_lms/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

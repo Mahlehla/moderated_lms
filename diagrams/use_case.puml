@@ -1,0 +1,65 @@
+@startuml
+left to right direction
+actor "Authenticated User" as AU
+actor Administrator as Admin
+actor Lecturer as Lec
+actor "Head of Department" as HoD
+actor Student as Stu
+Admin --|> AU
+Lec --|> AU
+HoD --|> AU
+Stu --|> AU
+rectangle "Moderated Learning Management System" {
+ usecase "Login" as Login
+ usecase "Manage Users" as Users
+ usecase "Manage Departments" as Depts
+ usecase "Manage Courses" as Courses
+ usecase "Assign Lecturer" as Assign
+ usecase "Enrol Student" as Enrol
+ usecase "Create Assignment" as Create
+ usecase "Grant Individual Extension" as Extension
+ usecase "View Submissions" as ViewSub
+ usecase "Mark Submission" as Mark
+ usecase "Submit Assignment" as Submit
+ usecase "Late Submission Handling" as Late
+ usecase "Resubmit Assignment" as Resubmit
+ usecase "View Courses and Assignments" as ViewAssign
+ usecase "Moderate Mark" as Moderate
+ usecase "Return for Correction" as Return
+ usecase "Release Mark" as Release
+ usecase "View Released Mark and Feedback" as Results
+}
+Admin --> Users
+Admin --> Depts
+Admin --> Courses
+Admin --> Assign
+Admin --> Enrol
+Lec --> Create
+Lec --> Extension
+Lec --> ViewSub
+Lec --> Mark
+Stu --> ViewAssign
+Stu --> Submit
+Stu --> Resubmit
+Stu --> Results
+HoD --> Moderate
+HoD --> Release
+Users ..> Login : <<include>>
+Depts ..> Login : <<include>>
+Courses ..> Login : <<include>>
+Assign ..> Login : <<include>>
+Enrol ..> Login : <<include>>
+Create ..> Login : <<include>>
+Extension ..> Login : <<include>>
+ViewSub ..> Login : <<include>>
+Mark ..> Login : <<include>>
+ViewAssign ..> Login : <<include>>
+Submit ..> Login : <<include>>
+Resubmit ..> Login : <<include>>
+Results ..> Login : <<include>>
+Moderate ..> Login : <<include>>
+Release ..> Login : <<include>>
+Late ..> Submit : <<extend>>
+Return ..> Moderate : <<extend>>
+Resubmit ..> Submit : <<extend>>
+@enduml
