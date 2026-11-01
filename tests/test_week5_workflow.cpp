@@ -17,13 +17,21 @@ void seed(Database& database) {
             (1, 'lecturer', 'hash1', 'Test Lecturer', 'LECTURER'),
             (2, 'hod', 'hash2', 'Test HOD', 'HOD'),
             (3, 'student', 'hash3', 'Test Student', 'STUDENT'),
-            (4, 'admin', 'hash4', 'Test Administrator', 'ADMINISTRATOR');
+            (4, 'admin', 'hash4', 'Test Administrator', 'ADMINISTRATOR'),
+            (5, 'other_lecturer', 'hash5', 'Unassigned Lecturer', 'LECTURER'),
+            (6, 'other_hod', 'hash6', 'Unassigned HOD', 'HOD');
 
         INSERT INTO DEPARTMENT (id, name)
         VALUES (1, 'Computer Science');
 
         INSERT INTO COURSE (id, code, name, department_id)
         VALUES (1, 'CSC4433', 'Software Engineering', 1);
+
+        INSERT INTO LECTURER_COURSE (lecturer_id, course_id)
+        VALUES (1, 1);
+
+        INSERT INTO DEPARTMENT_HOD (hod_id, department_id)
+        VALUES (2, 1);
 
         INSERT INTO ASSIGNMENT
             (id, course_id, title, description, deadline, released, max_mark)
@@ -84,6 +92,16 @@ int main() {
             4, "admin", "hash4", "Test Administrator", Role::Administrator
         );
 
+        Lecturer unassignedLecturer(
+            5, "other_lecturer", "hash5",
+            "Unassigned Lecturer", Role::Lecturer
+        );
+
+        HeadOfDepartment unassignedHod(
+            6, "other_hod", "hash6",
+            "Unassigned HOD", Role::HeadOfDepartment
+        );
+
         AssessmentWorkflowService workflow(database);
 
         // Assignment maximum is 40, not 100.
@@ -104,6 +122,14 @@ int main() {
         assert(throwsException([&] {
             workflow.markSubmission(
                 student, 1, 30, "Feedback", "2026-11-01 12:30:00"
+            );
+        }));
+
+        // A lecturer without a course assignment cannot mark.
+        assert(throwsException([&] {
+            workflow.markSubmission(
+                unassignedLecturer, 1, 30,
+                "Unauthorized feedback.", "2026-11-01 12:30:00"
             );
         }));
 
@@ -136,6 +162,16 @@ int main() {
             );
         }));
 
+        // An HOD outside the assignment's department cannot
+        // grant an extension.
+        assert(throwsException([&] {
+            workflow.grantExtension(
+                unassignedHod, 1, 3,
+                "2026-11-07 23:59:59",
+                "2026-11-01 13:00:00"
+            );
+        }));
+
         // Administrator grants a general extension.
         workflow.grantExtension(
             admin, 1, std::nullopt,
@@ -163,7 +199,21 @@ int main() {
             ) == "2026-11-04 23:59:59"
         );
 
-        // HOD moderates and releases.
+        // An HOD not assigned to this department cannot
+        // moderate or release its marks.
+        assert(throwsException([&] {
+            workflow.moderateSubmission(
+                unassignedHod, 1, "2026-11-01 13:55:00"
+            );
+        }));
+
+        assert(throwsException([&] {
+            workflow.releaseMark(
+                unassignedHod, 1, "2026-11-01 13:56:00"
+            );
+        }));
+
+        // Authorized HOD moderates and releases.
         workflow.moderateSubmission(
             hod, 1, "2026-11-01 14:00:00"
         );

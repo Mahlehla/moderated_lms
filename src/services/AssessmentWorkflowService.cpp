@@ -83,15 +83,19 @@ void checkStep(sqlite3* db, sqlite3_stmt* statement) {
 struct SubmissionInfo {
     int assignmentId;
     int studentId;
+    int courseId;
+    int departmentId;
     double maximumMark;
 };
 
 SubmissionInfo getSubmissionInfo(sqlite3* db, int submissionId) {
     Statement statement(
         db,
-        "SELECT s.assignment_id, s.student_id, a.max_mark "
+        "SELECT s.assignment_id, s.student_id, c.id, "
+        "c.department_id, a.max_mark "
         "FROM SUBMISSION s "
         "JOIN ASSIGNMENT a ON a.id = s.assignment_id "
+        "JOIN COURSE c ON c.id = a.course_id "
         "WHERE s.id = ?"
     );
 
@@ -104,7 +108,9 @@ SubmissionInfo getSubmissionInfo(sqlite3* db, int submissionId) {
     return {
         sqlite3_column_int(statement.get(), 0),
         sqlite3_column_int(statement.get(), 1),
-        sqlite3_column_double(statement.get(), 2)
+        sqlite3_column_int(statement.get(), 2),
+        sqlite3_column_int(statement.get(), 3),
+        sqlite3_column_double(statement.get(), 4)
     };
 }
 
@@ -113,6 +119,48 @@ void requirePermission(Role role, Permission permission) {
 
     if (!access.hasPermission(role, permission)) {
         throw std::runtime_error("Permission denied.");
+    }
+}
+
+void requireLecturerCourse(
+    sqlite3* db,
+    int lecturerId,
+    int courseId
+) {
+    Statement statement(
+        db,
+        "SELECT 1 FROM LECTURER_COURSE "
+        "WHERE lecturer_id = ? AND course_id = ?"
+    );
+
+    sqlite3_bind_int(statement.get(), 1, lecturerId);
+    sqlite3_bind_int(statement.get(), 2, courseId);
+
+    if (sqlite3_step(statement.get()) != SQLITE_ROW) {
+        throw std::runtime_error(
+            "Permission denied: lecturer is not assigned to this course."
+        );
+    }
+}
+
+void requireHodDepartment(
+    sqlite3* db,
+    int hodId,
+    int departmentId
+) {
+    Statement statement(
+        db,
+        "SELECT 1 FROM DEPARTMENT_HOD "
+        "WHERE hod_id = ? AND department_id = ?"
+    );
+
+    sqlite3_bind_int(statement.get(), 1, hodId);
+    sqlite3_bind_int(statement.get(), 2, departmentId);
+
+    if (sqlite3_step(statement.get()) != SQLITE_ROW) {
+        throw std::runtime_error(
+            "Permission denied: HOD is not assigned to this department."
+        );
     }
 }
 
@@ -190,6 +238,12 @@ void AssessmentWorkflowService::markSubmission(
 
     const SubmissionInfo info =
         getSubmissionInfo(database_.handle(), submissionId);
+
+    requireLecturerCourse(
+        database_.handle(),
+        lecturer.id(),
+        info.courseId
+    );
 
     if (mark < 0.0 || mark > info.maximumMark) {
         throw std::invalid_argument(
@@ -294,13 +348,27 @@ void AssessmentWorkflowService::grantExtension(
 
     Statement assignment(
         database_.handle(),
-        "SELECT id FROM ASSIGNMENT WHERE id = ?"
+        "SELECT c.department_id "
+        "FROM ASSIGNMENT a "
+        "JOIN COURSE c ON c.id = a.course_id "
+        "WHERE a.id = ?"
     );
 
     sqlite3_bind_int(assignment.get(), 1, assignmentId);
 
     if (sqlite3_step(assignment.get()) != SQLITE_ROW) {
         throw std::runtime_error("Assignment does not exist.");
+    }
+
+    const int departmentId =
+        sqlite3_column_int(assignment.get(), 0);
+
+    if (actor.role() == Role::HeadOfDepartment) {
+        requireHodDepartment(
+            database_.handle(),
+            actor.id(),
+            departmentId
+        );
     }
 
     Statement insert(
@@ -385,7 +453,14 @@ void AssessmentWorkflowService::moderateSubmission(
 
     Transaction transaction(database_.handle());
 
-    getSubmissionInfo(database_.handle(), submissionId);
+    const SubmissionInfo info =
+        getSubmissionInfo(database_.handle(), submissionId);
+
+    requireHodDepartment(
+        database_.handle(),
+        headOfDepartment.id(),
+        info.departmentId
+    );
 
     Statement update(
         database_.handle(),
@@ -433,7 +508,14 @@ void AssessmentWorkflowService::releaseMark(
 
     Transaction transaction(database_.handle());
 
-    getSubmissionInfo(database_.handle(), submissionId);
+    const SubmissionInfo info =
+        getSubmissionInfo(database_.handle(), submissionId);
+
+    requireHodDepartment(
+        database_.handle(),
+        headOfDepartment.id(),
+        info.departmentId
+    );
 
     Statement update(
         database_.handle(),

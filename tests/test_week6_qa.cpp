@@ -66,6 +66,12 @@ void seed(Database& database) {
         INSERT INTO COURSE (id, code, name, department_id)
         VALUES (1, 'CSC4433', 'Software Engineering', 1);
 
+        INSERT INTO LECTURER_COURSE (lecturer_id, course_id)
+        VALUES (1, 1);
+
+        INSERT INTO DEPARTMENT_HOD (hod_id, department_id)
+        VALUES (2, 1);
+
         INSERT INTO ASSIGNMENT
             (id, course_id, title, description, deadline, released, max_mark)
         VALUES
@@ -220,17 +226,25 @@ int main() {
         const int auditBeforeRollback =
             scalar(database, "SELECT COUNT(*) FROM AUDIT_LOG");
 
-        // This HOD role has permission, but actor ID 999 does
-        // not exist in USER. The audit insert must fail its FK.
-        HeadOfDepartment invalidHod(
-            999, "ghost", "hash", "Missing HOD", Role::HeadOfDepartment
-        );
+        // Force the audit insert to fail after the moderation
+        // update. The valid HOD must pass authorization first.
+        execute(database, R"SQL(
+            CREATE TRIGGER force_audit_failure
+            BEFORE INSERT ON AUDIT_LOG
+            WHEN NEW.action = 'MODERATE_MARK'
+            BEGIN
+                SELECT RAISE(ABORT, 'Forced audit failure for rollback test');
+            END;
+        )SQL");
 
         assert(throwsException([&] {
             workflow.moderateSubmission(
-                invalidHod, secondSubmissionId, "2026-11-01 13:20:00"
+                hod, secondSubmissionId, "2026-11-01 13:20:00"
             );
         }));
+
+        // Remove the trigger after the failed transaction.
+        execute(database, "DROP TRIGGER force_audit_failure");
 
         // The transaction must roll back the moderation update.
         assert(

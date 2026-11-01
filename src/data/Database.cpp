@@ -65,6 +65,32 @@ void Database::initialise()
                 REFERENCES DEPARTMENT(id)
         );
 
+        CREATE TABLE IF NOT EXISTS LECTURER_COURSE (
+            lecturer_id INTEGER NOT NULL,
+            course_id INTEGER NOT NULL,
+
+            PRIMARY KEY (lecturer_id, course_id),
+
+            FOREIGN KEY (lecturer_id)
+                REFERENCES USER(id),
+
+            FOREIGN KEY (course_id)
+                REFERENCES COURSE(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS DEPARTMENT_HOD (
+            hod_id INTEGER NOT NULL,
+            department_id INTEGER NOT NULL,
+
+            PRIMARY KEY (hod_id, department_id),
+
+            FOREIGN KEY (hod_id)
+                REFERENCES USER(id),
+
+            FOREIGN KEY (department_id)
+                REFERENCES DEPARTMENT(id)
+        );
+
         CREATE TABLE IF NOT EXISTS ENROLMENT (
             student_id INTEGER NOT NULL,
             course_id INTEGER NOT NULL,
