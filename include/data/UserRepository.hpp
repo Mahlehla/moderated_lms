@@ -16,6 +16,10 @@ public:
 
     void ensureDemoUser();
 
-    std::unique_ptr<User>
-    findByUsername(const std::string& username);
+    std::unique_ptr<User> findByUsername(const std::string& username);
+
+    void updatePasswordHash(
+        const std::string& username,
+        const std::string& passwordHash
+    );
 };

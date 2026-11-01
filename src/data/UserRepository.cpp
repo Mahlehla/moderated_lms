@@ -1,4 +1,5 @@
 #include "data/UserRepository.hpp"
+#include "services/PasswordHasher.hpp"
 
 #include <sqlite3.h>
 #include <stdexcept>
@@ -122,9 +123,9 @@ void UserRepository::ensureDemoUser()
     sqlite3_bind_text(
         statement,
         2,
-        "admin123",
+        PasswordHasher::hash("admin123").c_str(),
         -1,
-        SQLITE_STATIC
+        SQLITE_TRANSIENT
     );
 
     sqlite3_bind_text(
@@ -219,4 +220,37 @@ UserRepository::findByUsername(
     sqlite3_finalize(statement);
 
     return result;
+}
+
+
+void UserRepository::updatePasswordHash(
+    const std::string& username,
+    const std::string& passwordHash
+)
+{
+    const char* query =
+        "UPDATE USER SET password_hash = ? WHERE username = ?";
+
+    sqlite3_stmt* statement = nullptr;
+
+    if (sqlite3_prepare_v2(
+            database_.handle(), query, -1, &statement, nullptr
+        ) != SQLITE_OK) {
+        throw std::runtime_error(sqlite3_errmsg(database_.handle()));
+    }
+
+    sqlite3_bind_text(
+        statement, 1, passwordHash.c_str(), -1, SQLITE_TRANSIENT
+    );
+    sqlite3_bind_text(
+        statement, 2, username.c_str(), -1, SQLITE_TRANSIENT
+    );
+
+    if (sqlite3_step(statement) != SQLITE_DONE) {
+        const std::string error = sqlite3_errmsg(database_.handle());
+        sqlite3_finalize(statement);
+        throw std::runtime_error(error);
+    }
+
+    sqlite3_finalize(statement);
 }
