@@ -1,5 +1,6 @@
 #include "services/AssessmentWorkflowService.hpp"
 #include "services/AccessControlService.hpp"
+#include "services/StandardLateSubmissionStrategy.hpp"
 
 #include <sqlite3.h>
 
@@ -560,4 +561,176 @@ bool AssessmentWorkflowService::isMarkReleased(int submissionId) const {
     }
 
     return sqlite3_column_int(statement.get(), 0) == 1;
+}
+int AssessmentWorkflowService::submitAssignment(
+    const User& student,
+    int assignmentId,
+    const std::string& content,
+    const std::string& submittedAt
+) {
+    requirePermission(
+        student.role(),
+        Permission::SubmitAssignments
+    );
+
+    if (student.id() <= 0 || assignmentId <= 0) {
+        throw std::invalid_argument("Invalid student or assignment ID.");
+    }
+
+    if (content.empty()) {
+        throw std::invalid_argument("Submission content cannot be empty.");
+    }
+
+    if (submittedAt.empty()) {
+        throw std::invalid_argument("Submission timestamp cannot be empty.");
+    }
+
+    Transaction transaction(database_.handle());
+
+    Statement assignment(
+        database_.handle(),
+        "SELECT course_id, deadline "
+        "FROM ASSIGNMENT WHERE id = ?"
+    );
+
+    sqlite3_bind_int(assignment.get(), 1, assignmentId);
+
+    if (sqlite3_step(assignment.get()) != SQLITE_ROW) {
+        throw std::runtime_error("Assignment does not exist.");
+    }
+
+    const int courseId =
+        sqlite3_column_int(assignment.get(), 0);
+
+    const auto* deadlineText =
+        sqlite3_column_text(assignment.get(), 1);
+
+    if (!deadlineText) {
+        throw std::runtime_error("Assignment deadline is invalid.");
+    }
+
+    const std::string originalDeadline =
+        reinterpret_cast<const char*>(deadlineText);
+
+    Statement enrolment(
+        database_.handle(),
+        "SELECT 1 FROM ENROLMENT "
+        "WHERE student_id = ? AND course_id = ?"
+    );
+
+    sqlite3_bind_int(enrolment.get(), 1, student.id());
+    sqlite3_bind_int(enrolment.get(), 2, courseId);
+
+    if (sqlite3_step(enrolment.get()) != SQLITE_ROW) {
+        throw std::runtime_error(
+            "You are not enrolled in this assignment's course."
+        );
+    }
+
+    const std::string deadline = effectiveDeadline(
+        assignmentId,
+        student.id(),
+        originalDeadline
+    );
+
+    StandardLateSubmissionStrategy lateStrategy;
+
+    const std::string status =
+        lateStrategy.isLate(submittedAt, deadline)
+            ? "LATE"
+            : "SUBMITTED";
+
+    Statement versionQuery(
+        database_.handle(),
+        "SELECT COALESCE(MAX(version), 0) + 1 "
+        "FROM SUBMISSION "
+        "WHERE assignment_id = ? AND student_id = ?"
+    );
+
+    sqlite3_bind_int(versionQuery.get(), 1, assignmentId);
+    sqlite3_bind_int(versionQuery.get(), 2, student.id());
+
+    if (sqlite3_step(versionQuery.get()) != SQLITE_ROW) {
+        throw std::runtime_error("Could not determine submission version.");
+    }
+
+    const int version =
+        sqlite3_column_int(versionQuery.get(), 0);
+
+    Statement insert(
+        database_.handle(),
+        "INSERT INTO SUBMISSION "
+        "(assignment_id, student_id, version, submitted_at, status, content) "
+        "VALUES (?, ?, ?, ?, ?, ?)"
+    );
+
+    sqlite3_bind_int(insert.get(), 1, assignmentId);
+    sqlite3_bind_int(insert.get(), 2, student.id());
+    sqlite3_bind_int(insert.get(), 3, version);
+    bindText(insert.get(), 4, submittedAt);
+    bindText(insert.get(), 5, status);
+    bindText(insert.get(), 6, content);
+
+    checkStep(database_.handle(), insert.get());
+
+    const int submissionId =
+        static_cast<int>(sqlite3_last_insert_rowid(database_.handle()));
+
+    writeAudit(
+        student.id(),
+        "SUBMIT_ASSIGNMENT",
+        "SUBMISSION",
+        submissionId,
+        "",
+        "ASSIGNMENT:" + std::to_string(assignmentId)
+            + ";VERSION:" + std::to_string(version)
+            + ";STATUS:" + status,
+        submittedAt
+    );
+
+    transaction.commit();
+
+    return submissionId;
+}
+
+std::optional<AssessmentWorkflowService::ReleasedMark>
+AssessmentWorkflowService::releasedMarkForStudent(
+    const User& student,
+    int submissionId
+) const {
+    requirePermission(
+        student.role(),
+        Permission::ViewReleasedMarks
+    );
+
+    if (student.id() <= 0 || submissionId <= 0) {
+        throw std::invalid_argument("Invalid student or submission ID.");
+    }
+
+    Statement statement(
+        database_.handle(),
+        "SELECT m.mark, m.feedback "
+        "FROM MARK m "
+        "JOIN SUBMISSION s ON s.id = m.submission_id "
+        "WHERE s.id = ? "
+        "AND s.student_id = ? "
+        "AND m.released = 1"
+    );
+
+    sqlite3_bind_int(statement.get(), 1, submissionId);
+    sqlite3_bind_int(statement.get(), 2, student.id());
+
+    if (sqlite3_step(statement.get()) != SQLITE_ROW) {
+        return std::nullopt;
+    }
+
+    const auto* feedbackText =
+        sqlite3_column_text(statement.get(), 1);
+
+    return ReleasedMark{
+        sqlite3_column_double(statement.get(), 0),
+        feedbackText
+            ? reinterpret_cast<const char*>(feedbackText)
+            : ""
+    };
 }

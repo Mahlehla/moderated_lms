@@ -26,6 +26,10 @@ private:
     );
 
 public:
+    struct ReleasedMark {
+    double mark;
+    std::string feedback;
+};
     explicit AssessmentWorkflowService(Database& database)
         : database_(database) {}
 
@@ -56,7 +60,17 @@ public:
         int submissionId,
         const std::string& timestamp
     );
+        int submitAssignment(
+        const User& student,
+        int assignmentId,
+        const std::string& content,
+        const std::string& submittedAt
+    );
 
+    std::optional<ReleasedMark> releasedMarkForStudent(
+        const User& student,
+        int submissionId
+    ) const;
     void releaseMark(
         const User& headOfDepartment,
         int submissionId,

@@ -1,5 +1,39 @@
-build/
+# CMake and build output
+/build/
+/build-*/
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/CTestTestfile.cmake
+/Makefile
+
+# SQLite databases
 *.db
 *.db-*
-*.backup.*
+*.sqlite
+*.sqlite3
+
+# Logs and code coverage
 *.log
+*.gcda
+*.gcno
+*.gcov
+coverage/
+
+# Temporary files and backups
+*.bak
+*.bak_*
+*.backup*
+*-backup*
+*.pre_*
+*.before_*
+/backups/
+
+# Editor and operating-system files
+*~
+.DS_Store
+
+# Additional backup naming patterns
+*.repair_backup
+*.before-*
+*.pre-*

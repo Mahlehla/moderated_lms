@@ -26,4 +26,5 @@ public:
 
     std::vector<Course>
     findByDepartment(int departmentId);
+    std::vector<Course> findByLecturer(int lecturerId);
 };

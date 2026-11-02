@@ -27,6 +27,63 @@ int main() {
         auto admin = users.findByUsername("admin");
         assert(admin != nullptr);
         assert(PasswordHasher::isHashed(admin->passwordHash()));
+                // Account management tests.
+        assert(users.countUsers() == 1);
+
+        const int lecturerId = users.createUser(
+            "lecturer01",
+            "LecturerPassword2026!",
+            "Test Lecturer",
+            Role::Lecturer
+        );
+
+        assert(lecturerId > 0);
+        assert(users.countUsers() == 2);
+
+        auto lecturer = users.findByUsername("lecturer01");
+        assert(lecturer != nullptr);
+        assert(lecturer->role() == Role::Lecturer);
+        assert(lecturer->fullName() == "Test Lecturer");
+        assert(PasswordHasher::isHashed(lecturer->passwordHash()));
+        assert(PasswordHasher::verify(
+            "LecturerPassword2026!",
+            lecturer->passwordHash()
+        ));
+
+        auto allUsers = users.findAll();
+        assert(allUsers.size() == 2);
+
+        // Invalid account details must be rejected.
+        bool shortPasswordRejected = false;
+
+        try {
+            users.createUser(
+                "student01",
+                "short",
+                "Test Student",
+                Role::Student
+            );
+        } catch (const std::invalid_argument&) {
+            shortPasswordRejected = true;
+        }
+
+        assert(shortPasswordRejected);
+        assert(users.countUsers() == 2);
+
+        bool invalidUsernameRejected = false;
+
+        try {
+            users.createUser(
+                "bad username",
+                "ValidPassword2026!",
+                "Invalid User",
+                Role::Student
+            );
+        } catch (const std::invalid_argument&) {
+            invalidUsernameRejected = true;
+        }
+
+        assert(invalidUsernameRejected);
         assert(PasswordHasher::verify("admin123", admin->passwordHash()));
         assert(!PasswordHasher::verify("wrong-password", admin->passwordHash()));
 
